@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Chat Room Realtime</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    header {
+      padding: 15px;
+      text-align: center;
+      font-size: 1.5em;
+      background: rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(5px);
+    }
+    #chat-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      max-width: 900px;
+      width: 100%;
+      margin: auto;
+      overflow-y: auto;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .message {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 10px 15px;
+      border-radius: 10px;
+      margin: 5px 0;
+      animation: fadeIn 0.3s ease;
+    }
+    .username {
+      font-weight: bold;
+      color: #00ffff;
+    }
+    .time {
+      font-size: 0.75em;
+      opacity: 0.7;
+      float: right;
+    }
+    @keyframes fadeIn {
+      from {opacity: 0; transform: translateY(5px);}
+      to {opacity: 1; transform: translateY(0);}
+    }
+    #input-container {
+      display: flex;
+      max-width: 900px;
+      margin: 10px auto;
+      width: 100%;
+      padding: 0 20px 20px;
+      box-sizing: border-box;
+    }
+    input {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 5px 0 0 5px;
+      outline: none;
+    }
+    button {
+      padding: 10px 20px;
+      border: none;
+      background: #00ffff;
+      color: black;
+      font-weight: bold;
+      border-radius: 0 5px 5px 0;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    button:hover {
+      background: #00cccc;
+    }
+    #closed {
+      text-align: center;
+      padding: 50px;
+      font-size: 1.2em;
+    }
+  </style>
+</head>
+<body>
+
+<header>💬 Chat Room Digital</header>
+
+<div id="chat-container"></div>
+
+<div id="input-container">
+  <input type="text" id="messageInput" placeholder="Ketik pesan..." />
+  <button id="sendBtn">Kirim</button>
+</div>
+
+<div id="closed" style="display:none;">⏳ Chat room hanya buka jam 06:00 - 01:00</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+  import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyB_1FfccKqXdet00LJyYLY7K4FenvgerhU",
+    authDomain: "webku-bf4dd.firebaseapp.com",
+    databaseURL: "https://webku-bf4dd-default-rtdb.asia-southeast1.firebasedatabase.app/",
+    projectId: "webku-bf4dd",
+    storageBucket: "webku-bf4dd.firebasestorage.app",
+    messagingSenderId: "873622953345",
+    appId: "1:873622953345:web:50b0dcfc58b27b9b1c5c80",
+    measurementId: "G-30ZPKLVZYE"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  const chatContainer = document.getElementById("chat-container");
+  const input = document.getElementById("messageInput");
+  const sendBtn = document.getElementById("sendBtn");
+  const closedMsg = document.getElementById("closed");
+
+  let username = localStorage.getItem("username");
+  if (!username) {
+    username = prompt("Masukkan nama Anda:");
+    localStorage.setItem("username", username || "Anonim");
+  }
+
+  function checkOpenHours() {
+    const now = new Date();
+    const hour = now.getHours();
+    // buka 06:00 - 01:00
+    if (hour >= 6 || hour < 1) {
+      return true;
+    }
+    return false;
+  }
+
+  function renderMessage(data) {
+    const div = document.createElement("div");
+    div.classList.add("message");
+    div.innerHTML = `<span class="username">${data.username}</span>: ${data.text} <span class="time">${data.time}</span>`;
+    chatContainer.appendChild(div);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+  }
+
+  if (!checkOpenHours()) {
+    document.getElementById("input-container").style.display = "none";
+    closedMsg.style.display = "block";
+  } else {
+    const messagesRef = ref(db, "messages");
+    onChildAdded(messagesRef, (snapshot) => {
+      renderMessage(snapshot.val());
+    });
+
+    sendBtn.onclick = () => {
+      const text = input.value.trim();
+      if (text) {
+        const now = new Date();
+        const time = now.toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit' });
+        push(messagesRef, {
+          username: username,
+          text: text,
+          time: time
+        });
+        input.value = "";
+      }
+    };
+  }
+</script>
+
+</body>
+</html>
