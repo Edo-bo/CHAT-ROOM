@@ -2,363 +2,505 @@
 <html lang="id">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>WhatsApp-style Realtime Chat (Firebase)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <title>WhatsApp-Style Chat — Firebase Google Auth</title>
   <style>
     :root{
       --wa-green:#075e54; --bg:#e5ddd5; --bubble-me:#dcf8c6; --bubble-other:#fff;
-      --muted:#7b7b7b; --accent:#34b7f1;
-      font-family: "Helvetica Neue", Arial, sans-serif;
+      --muted:#777; --accent:#34b7f1; --surface:#f2f3f2;
+      font-family: "Roboto", "Helvetica Neue", Arial, sans-serif;
     }
     html,body{height:100%;margin:0;background:var(--bg);-webkit-font-smoothing:antialiased}
-    .app{height:100vh;display:flex;flex-direction:column;max-width:980px;margin:0 auto;background:var(--bg)}
-    header{height:64px;background:var(--wa-green);color:#fff;display:flex;align-items:center;padding:8px 12px;gap:12px}
-    .avatar{width:44px;height:44px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;color:var(--wa-green);font-weight:700;cursor:pointer}
-    .title{font-size:16px;font-weight:700}
-    .subtitle{font-size:12px;color:rgba(255,255,255,0.9)}
-    .main{flex:1;display:flex;flex-direction:row;overflow:hidden}
-    .left{width:300px;border-right:1px solid rgba(0,0,0,0.05);background:#f8f9f9;padding:12px;box-sizing:border-box}
-    .right{flex:1;display:flex;flex-direction:column;align-items:stretch}
-    .chat{flex:1;padding:18px;overflow:auto;background-image:url('https://i.ibb.co/D8g2Snp/whatsapp-bg.png');background-size:cover}
-    .msg{max-width:74%;padding:10px 12px;margin:8px 0;border-radius:8px;position:relative;word-wrap:break-word;white-space:pre-wrap;box-shadow:0 1px 0 rgba(0,0,0,0.06)}
-    .msg.me{margin-left:auto;background:var(--bubble-me);border-bottom-right-radius:2px}
-    .msg.other{margin-right:auto;background:var(--bubble-other);border-bottom-left-radius:2px}
-    .msg .meta{font-size:11px;color:var(--muted);margin-top:6px;display:flex;gap:8px;align-items:center;justify-content:flex-end}
+    .app{max-width:420px;height:100vh;margin:0 auto;display:flex;flex-direction:column;background:var(--bg);border-left:1px solid rgba(0,0,0,0.06);border-right:1px solid rgba(0,0,0,0.06);}
+    header{height:56px;background:var(--wa-green);color:#fff;display:flex;align-items:center;gap:12px;padding:8px;}
+    .header-left{display:flex;gap:10px;align-items:center}
+    .avatar{width:40px;height:40px;border-radius:50%;background:#fff;color:var(--wa-green);display:flex;align-items:center;justify-content:center;font-weight:700;cursor:pointer}
+    .title{font-weight:700}
+    .subtitle{font-size:12px;opacity:.95}
+    .header-right{margin-left:auto;display:flex;gap:8px;align-items:center}
+    .icon-btn{background:transparent;border:0;color:#fff;font-size:20px;padding:8px;cursor:pointer}
+    .chat{flex:1;overflow:auto;padding:12px;background-image:url('https://i.ibb.co/D8g2Snp/whatsapp-bg.png');background-size:cover}
+    .msg-row{display:flex;flex-direction:column;gap:4px;margin:6px 0;position:relative}
+    .msg{max-width:78%;padding:10px 12px;border-radius:8px;word-wrap:break-word;white-space:pre-wrap;box-shadow:0 1px 0 rgba(0,0,0,0.05);}
+    .msg.me{align-self:flex-end;background:var(--bubble-me);border-bottom-right-radius:2px}
+    .msg.other{align-self:flex-start;background:var(--bubble-other);border-bottom-left-radius:2px}
+    .msg .meta{display:flex;align-items:center;gap:6px;justify-content:flex-end;font-size:11px;color:var(--muted);margin-top:6px}
     .reply-box{background:rgba(0,0,0,0.05);padding:6px 8px;border-left:3px solid var(--accent);margin-bottom:6px;border-radius:6px;font-size:13px;color:#333;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .controls{position:absolute;left:8px;top:6px;display:flex;gap:6px;opacity:0;transition:opacity .15s}
-    .msg:hover .controls{opacity:1}
-    .icon-btn{background:rgba(0,0,0,0.06);border:none;padding:4px 6px;border-radius:6px;cursor:pointer;font-size:12px}
-    .composer{padding:12px;background:#f0f0f0;border-top:1px solid rgba(0,0,0,0.06);display:flex;flex-direction:column;gap:8px}
-    .reply-preview{display:flex;align-items:center;gap:8px;padding:8px;background:#fafafa;border-left:3px solid var(--accent);border-radius:6px}
-    .input-row{display:flex;gap:8px}
-    .input{flex:1;padding:12px;border-radius:20px;border:1px solid rgba(0,0,0,0.08);outline:none}
-    .btn{background:var(--wa-green);color:white;border:none;padding:10px 14px;border-radius:50%;cursor:pointer}
-    .btn:disabled{background:gray;cursor:not-allowed}
-    .user-list{display:flex;flex-direction:column;gap:8px}
-    .user-card{display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;background:#fff;cursor:pointer}
-    .user-card .meta{font-size:13px;color:#333}
+    .three-dots{position:absolute;top:0;right:-36px;display:flex;align-items:center}
+    .three-dots button{background:transparent;border:0;padding:4px;border-radius:6px;cursor:pointer}
+    .menu {position: absolute;z-index: 9999;background: #fff;color: #111;box-shadow: 0 6px 18px rgba(0,0,0,0.12);border-radius: 8px;min-width: 160px;overflow:hidden;transform-origin: top right;}
+    .menu .item{padding:10px 12px;border-bottom:1px solid #eee;cursor:pointer;font-size:14px}
+    .menu .item:last-child{border-bottom:0}
+    .menu .item:hover{background:#f2f2f2}
+    .composer{display:flex;gap:8px;padding:8px;background:var(--surface);align-items:center}
+    .left-icons{display:flex;gap:6px}
+    .em-btn{width:36px;height:36px;border-radius:50%;background:transparent;border:0;display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer}
+    .text-input{flex:1;border-radius:20px;padding:10px 12px;border:1px solid rgba(0,0,0,0.06);outline:none;background:#fff;font-size:15px;}
+    .send-btn{width:44px;height:44px;border-radius:50%;background:var(--wa-green);border:0;color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer}
+    .send-btn:disabled{background:gray;cursor:not-allowed}
+    .hidden{display:none}
+    .modal-back{position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:2000}
+    .modal{background:#fff;padding:16px;border-radius:10px;width:92%;max-width:360px}
+    .modal h3{margin:0 0 8px 0}
+    .modal input{width:100%;padding:10px;margin:8px 0;border-radius:8px;border:1px solid #ddd}
+    .modal .row{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
     .small{font-size:12px;color:var(--muted)}
+    .back-btn{background:transparent;border:0;color:#fff;font-size:20px;padding:8px;cursor:pointer;margin-right:6px}
   </style>
 </head>
 <body>
-  <div class="app" role="application" aria-label="Chat App">
+  <div class="app" id="app">
     <header>
-      <div id="headerAvatar" class="avatar" title="Klik untuk chat privat admin">--</div>
-      <div style="flex:1">
-        <div class="title" id="roomTitle">Chat Room</div>
-        <div class="subtitle" id="statusLine">Online — ruang publik</div>
-      </div>
-      <div class="small" id="openHours">06:00 — 01:00</div>
-    </header>
-
-    <div class="main">
-      <div class="left">
-        <div style="margin-bottom:8px;font-weight:700">Peserta</div>
-        <div class="user-list" id="userList"></div>
-        <div style="margin-top:12px" class="small">Klik avatar admin untuk chat privat.</div>
-      </div>
-
-      <div class="right">
-        <div id="chatArea" class="chat" aria-live="polite"></div>
-
-        <div class="composer">
-          <div id="replyPreview" class="reply-preview" style="display:none">
-            <div style="font-weight:700" id="rpUser"></div>
-            <div style="flex:1;color:#333" id="rpText"></div>
-            <button id="rpCancel" class="icon-btn">×</button>
-          </div>
-
-          <div class="input-row">
-            <input id="textInput" class="input" placeholder="Tulis pesan..." aria-label="Tulis pesan" />
-            <button id="sendBtn" class="btn" title="Kirim">▶</button>
-          </div>
-          <div class="small" id="hint">Tekan Enter atau klik kirim. Klik pesan untuk membalas.</div>
+      <div class="header-left">
+        <div id="backBtn" class="back-btn hidden" title="Kembali">⬅</div>
+        <div id="headerAvatar" class="avatar" title="Chat privat admin">--</div>
+        <div>
+          <div class="title" id="roomTitle">Chat Room</div>
+          <div class="subtitle" id="statusLine">Belum login</div>
         </div>
       </div>
+      <div class="header-right">
+        <button id="headerMenuBtn" class="icon-btn" title="Menu">•••</button>
+      </div>
+    </header>
+
+    <div id="chat" class="chat" aria-live="polite"></div>
+
+    <div class="composer">
+      <div class="left-icons">
+        <button class="em-btn" title="Emoji">😊</button>
+        <button class="em-btn" title="Lampiran">📎</button>
+      </div>
+      <input id="textInput" class="text-input" placeholder="Tulis pesan..." aria-label="Tulis pesan" />
+      <button id="sendBtn" class="send-btn" title="Kirim">➤</button>
     </div>
   </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-    import {
-      getDatabase, ref, push, onChildAdded, update, onValue, get
-    } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
+  <!-- Header menu -->
+  <div id="headerMenu" class="menu hidden" style="position:fixed;top:56px;right:12px;z-index:1500">
+    <div class="item" id="menu_login_google">Login dengan Google</div>
+    <div class="item" id="menu_logout">Logout</div>
+    <div class="item" id="menu_toggle_room">Tutup/Buka Room (admin)</div>
+  </div>
 
-    // ---------- CONFIG ----------
-    const firebaseConfig = {
-      apiKey: "AIzaSyB_1FfccKqXdet00LJyYLY7K4FenvgerhU",
-      authDomain: "webku-bf4dd.firebaseapp.com",
-      databaseURL: "https://webku-bf4dd-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "webku-bf4dd",
-      storageBucket: "webku-bf4dd.appspot.com",
-      messagingSenderId: "873622953345",
-      appId: "1:873622953345:web:50b0dcfc58b27b9b1c5c80",
-      measurementId: "G-30ZPKLVZYE"
-    };
+  <!-- Admin UID/EMAIL EXPLAINER modal -->
+  <div id="modalAdminInfo" class="modal-back hidden">
+    <div class="modal">
+      <h3>Info Admin</h3>
+      <p class="small">Jika ingin menambah admin, ambil UID akun Google dari console (lihat console log setelah login) dan masukkan ke ALLOWED_ADMIN_UIDS di kode, atau tambahkan email ke ALLOWED_ADMIN_EMAILS.</p>
+      <div class="row"><button id="closeAdminInfo">Tutup</button></div>
+    </div>
+  </div>
 
-    // ---------- INIT ----------
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app, firebaseConfig.databaseURL);
+<script type="module">
+/* =========================
+   FIREBASE + AUTH + DB SETUP
+   ========================= */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+import { getDatabase, ref, push, onChildAdded, update, onValue, get } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
 
-    // ---------- DOM ----------
-    const chatArea = document.getElementById('chatArea');
-    const textInput = document.getElementById('textInput');
-    const sendBtn = document.getElementById('sendBtn');
-    const replyPreview = document.getElementById('replyPreview');
-    const rpUser = document.getElementById('rpUser');
-    const rpText = document.getElementById('rpText');
-    const rpCancel = document.getElementById('rpCancel');
-    const statusLine = document.getElementById('statusLine');
-    const headerAvatar = document.getElementById('headerAvatar');
-    const userListEl = document.getElementById('userList');
-    const hintEl = document.getElementById('hint');
-    const roomTitle = document.getElementById('roomTitle');
+/* ---------- CONFIG ---------- */
+/* Use your Firebase project config (I used the one you gave earlier) */
+const firebaseConfig = {
+  apiKey: "AIzaSyB_1FfccKqXdet00LJyYLY7K4FenvgerhU",
+  authDomain: "webku-bf4dd.firebaseapp.com",
+  databaseURL: "https://webku-bf4dd-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "webku-bf4dd",
+  storageBucket: "webku-bf4dd.appspot.com",
+  messagingSenderId: "873622953345",
+  appId: "1:873622953345:web:50b0dcfc58b27b9b1c5c80",
+  measurementId: "G-30ZPKLVZYE"
+};
 
-    // ---------- USER ----------
-    let username = localStorage.getItem('chat_username_v1');
-    if(!username){
-      // modal-like prompt loop until user gives a name (prevents empty)
-      while(true){
-        const v = prompt('Masukkan nama Anda (tidak kosong):', 'Anonim');
-        if(v && v.trim()){ username = v.trim(); break; }
-      }
-      localStorage.setItem('chat_username_v1', username);
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app, firebaseConfig.databaseURL);
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
+
+/* ---------- Admin list ----------
+   Replace with real admin email(s) or UID(s).
+   You can also add admin UIDs after first login (see console).
+*/
+const ALLOWED_ADMIN_EMAILS = [ /* "youremail@gmail.com" */ ];
+const ALLOWED_ADMIN_UIDS = [ /* "UID_FROM_FIREBASE_AUTH" */ ];
+
+/* =========================
+   DOM elements
+   ========================= */
+const chatEl = document.getElementById('chat');
+const textInput = document.getElementById('textInput');
+const sendBtn = document.getElementById('sendBtn');
+const headerAvatar = document.getElementById('headerAvatar');
+const headerMenuBtn = document.getElementById('headerMenuBtn');
+const headerMenu = document.getElementById('headerMenu');
+const menu_login_google = document.getElementById('menu_login_google');
+const menu_logout = document.getElementById('menu_logout');
+const menu_toggle_room = document.getElementById('menu_toggle_room');
+const backBtn = document.getElementById('backBtn');
+const roomTitle = document.getElementById('roomTitle');
+const statusLine = document.getElementById('statusLine');
+const modalAdminInfo = document.getElementById('modalAdminInfo');
+const closeAdminInfo = document.getElementById('closeAdminInfo');
+
+/* =========================
+   App state
+   ========================= */
+let currentUser = null;        // firebase user object
+let username = localStorage.getItem('chat_username_google') || null;
+let currentChatId = 'public';  // 'public' or 'private_<a>_<b>'
+let replyingTo = null;
+let rendered = new Set();
+
+/* ---------- UI init ---------- */
+function promptForLocalName(){
+  if(!username){
+    while(true){
+      const n = prompt('Masukkan nama tampil (akan ditampilkan di chat):', 'Anonim');
+      if(n && n.trim()){ username = n.trim(); localStorage.setItem('chat_username_google', username); break;}
     }
-    headerAvatar.textContent = username.slice(0,2).toUpperCase();
-    const isAdmin = username.toLowerCase() === 'admin';
+  }
+}
+promptForLocalName();
+headerAvatar.textContent = username.slice(0,2).toUpperCase();
 
-    // ---------- CHAT & PRESENCE ----------
-    let currentChatId = 'public';          // 'public' or private chat id
-    function privateChatId(a,b){ const arr=[a,b].sort(); return `private_${arr[0]}_${arr[1]}`; }
-    let rendered = new Set();             // message ids rendered for current chat
-    const PRESENCE_PATH = `presence/${username}`;
+/* =========================
+   AUTH FLOW (Google)
+   ========================= */
+menu_login_google.addEventListener('click', async () => {
+  try {
+    const result = await signInWithPopup(auth, provider);
+    // user signed in
+    // onAuthStateChanged will handle UI updates
+  } catch (err) {
+    console.error('Google sign-in failed', err);
+    alert('Gagal login Google: ' + (err.message || err.code));
+  } finally {
+    headerMenu.classList.add('hidden');
+  }
+});
 
-    // announce presence (simple)
-    function announcePresence(){
-      update(ref(db, `presence/${username}`), { lastActive: Date.now(), online: true }).catch(()=>{});
+menu_logout.addEventListener('click', async ()=>{
+  headerMenu.classList.add('hidden');
+  if(currentUser){
+    try{
+      await signOut(auth);
+      currentUser = null;
+      updateUIAuthState();
+    } catch(e){
+      console.error('Logout error', e);
     }
-    announcePresence();
-    setInterval(announcePresence, 20_000);
+  } else {
+    alert('Belum login.');
+  }
+});
 
-    // ---------- ROOM STATE ----------
-    const ROOM_STATE_REF = ref(db, 'room/state');
-    let roomClosed = false;
-    onValue(ROOM_STATE_REF, s => {
-      const v = s.val() || {};
-      roomClosed = !!v.closed;
-      refreshOpenState();
-    });
+/* React to auth state changes */
+onAuthStateChanged(auth, (user) => {
+  currentUser = user;
+  if(user){
+    console.log('Auth user:', user.uid, user.email);
+    // if user email or uid in admin list we treat as admin
+    const isAdmin = ALLOWED_ADMIN_EMAILS.includes(user.email) || ALLOWED_ADMIN_UIDS.includes(user.uid);
+    localStorage.setItem('chat_signed_in_uid', user.uid);
+    localStorage.setItem('chat_signed_in_email', user.email || '');
+    // update UI
+    updateUIAuthState(isAdmin);
+    // create presence and set display name if not set
+    update(ref(db, `presence/${user.uid}`), { lastActive: Date.now(), online: true, email: user.email }).catch(()=>{});
+  } else {
+    updateUIAuthState(false);
+  }
+});
 
-    // open hours logic
-    const ROOM_OPEN = 6, ROOM_CLOSE = 1;
-    function isWithinOpenHours(d = new Date()){
-      const h = d.getHours();
-      return (h >= ROOM_OPEN) || (h < ROOM_CLOSE);
+/* update UI after auth changes */
+function updateUIAuthState(isAdminFlag=false){
+  if(currentUser){
+    // show signed-in info
+    statusLine.textContent = `${username} — login: ${currentUser.email} ${isAdminFlag? '(admin)':''}`;
+    headerAvatar.textContent = (currentUser.displayName || username || 'U').slice(0,2).toUpperCase();
+    // show admin menu only if admin
+    if(isAdminFlag) menu_toggle_room.style.display = 'block'; else menu_toggle_room.style.display = 'none';
+  } else {
+    statusLine.textContent = `${username} — belum login`;
+    menu_toggle_room.style.display = 'none';
+  }
+}
+
+/* =========================
+   ROOM STATE (open/close)
+   ========================= */
+let roomClosed = false;
+const ROOM_OPEN = 6, ROOM_CLOSE = 1;
+function isWithinOpenHours(d = new Date()){ const h = d.getHours(); return (h >= ROOM_OPEN) || (h < ROOM_CLOSE); }
+
+onValue(ref(db, 'room/state'), (snap) => {
+  const v = snap.val() || {};
+  roomClosed = !!v.closed;
+  refreshOpenState();
+});
+
+/* refresh open/close UI */
+function refreshOpenState(){
+  const open = isWithinOpenHours() && !roomClosed;
+  sendBtn.disabled = !open;
+  textInput.disabled = !open;
+  if(!open) statusLine.textContent = `Ruang TUTUP (06:00—01:00) atau ditutup admin`;
+}
+
+/* toggling by admin through menu */
+menu_toggle_room.addEventListener('click', async ()=>{
+  headerMenu.classList.add('hidden');
+  if(!currentUser || !(ALLOWED_ADMIN_EMAILS.includes(currentUser.email) || ALLOWED_ADMIN_UIDS.includes(currentUser.uid))){
+    alert('Hanya admin yang dapat melakukan ini.');
+    return;
+  }
+  const snap = await get(ref(db, 'room/state'));
+  const cur = snap.exists() ? snap.val() : {};
+  const closed = !cur.closed;
+  await update(ref(db, 'room/state'), { closed }).catch(()=>{ alert('Gagal toggle room'); });
+  alert(closed ? 'Room ditutup' : 'Room dibuka');
+});
+
+/* =========================
+   PRESENCE
+   ========================= */
+function announcePresence(){
+  const who = currentUser ? currentUser.uid : username;
+  update(ref(db, `presence/${who}`), { lastActive: Date.now(), online: true, email: currentUser?.email || null }).catch(()=>{});
+}
+announcePresence();
+setInterval(announcePresence, 20_000);
+
+/* =========================
+   SUBSCRIBE TO CHAT (public by default)
+   ========================= */
+function privateChatId(a,b){ const arr=[a,b].sort(); return `private_${arr[0]}_${arr[1]}`; }
+
+function subscribeToChat(chatId){
+  currentChatId = chatId;
+  rendered = new Set();
+  chatEl.innerHTML = '';
+  roomTitle.textContent = (chatId === 'public') ? 'Chat Room' : `Privat — ${chatId.replace('private_','')}`;
+  if(chatId === 'public'){ backBtn.classList.add('hidden'); } else { backBtn.classList.remove('hidden'); }
+  const messagesRef = ref(db, `chats/${chatId}/messages`);
+  onChildAdded(messagesRef, (snap) => {
+    const id = snap.key;
+    const data = snap.val();
+    if(rendered.has(`${chatId}__${id}`)) return;
+    rendered.add(`${chatId}__${id}`);
+    renderMessage(chatId, id, data);
+    // mark delivered and seen (simple)
+    update(ref(db, `chats/${chatId}/messages/${id}/delivered/${whoKey()}`), true).catch(()=>{});
+    if(data.username !== whoKey()) update(ref(db, `chats/${chatId}/messages/${id}/seen/${whoKey()}`), true).catch(()=>{});
+  });
+  refreshOpenState();
+}
+subscribeToChat('public');
+
+function whoKey(){ return currentUser ? currentUser.uid : username; }
+
+/* =========================
+   RENDER MESSAGE
+   ========================= */
+function renderMessage(chatId, id, data){
+  // create row
+  const row = document.createElement('div'); row.className='msg-row'; row.dataset.msgid = `${chatId}__${id}`;
+  const bubble = document.createElement('div'); bubble.className = 'msg ' + ((data.authorUid && currentUser && data.authorUid === currentUser.uid) || (data.username === username && !data.authorUid) ? 'me' : 'other');
+
+  // three dots menu
+  const dotsWrap = document.createElement('div'); dotsWrap.className='three-dots';
+  const dotsBtn = document.createElement('button'); dotsBtn.textContent = '⋯'; dotsBtn.title = 'Menu';
+  dotsWrap.appendChild(dotsBtn);
+
+  // reply box
+  if(data.reply && data.reply.username){
+    const rb = document.createElement('div'); rb.className='reply-box'; rb.textContent = `${data.reply.username}: ${data.reply.text}`; bubble.appendChild(rb);
+  }
+
+  // text or deleted
+  const text = document.createElement('div'); text.textContent = data.deleted ? 'Pesan dihapus' : (data.text || '');
+  bubble.appendChild(text);
+
+  // meta
+  const meta = document.createElement('div'); meta.className = 'meta';
+  const t = document.createElement('span'); t.textContent = data.time || new Date(data.createdAt||Date.now()).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  meta.appendChild(t);
+  if(((data.authorUid && currentUser && data.authorUid === currentUser.uid) || (data.username === username && !data.authorUid))){
+    const tick = document.createElement('span'); tick.style.marginLeft='6px';
+    const delivered = data.delivered ? Object.keys(data.delivered||{}).length > 0 : false;
+    const seen = data.seen ? Object.keys(data.seen||{}).length > 0 : false;
+    if(!delivered) tick.textContent = '✓';
+    else if(delivered && !seen) tick.textContent = '✓✓';
+    else { tick.textContent = '✓✓'; tick.style.color = '#34b7f1'; }
+    meta.appendChild(tick);
+  }
+  bubble.appendChild(meta);
+
+  // dots menu actions
+  dotsBtn.addEventListener('click', (ev)=>{
+    ev.stopPropagation();
+    const existing = document.querySelector('.menu.message-menu'); if(existing) existing.remove();
+    const menu = document.createElement('div'); menu.className='menu message-menu';
+    menu.style.position='absolute';
+    menu.appendChild(menuItem('Balas', ()=>{ setReply({ id, username: data.username, text: data.text }); menu.remove(); }));
+    menu.appendChild(menuItem('Salin', ()=>{ navigator.clipboard?.writeText(data.text||'').catch(()=>{}); menu.remove(); }));
+    menu.appendChild(menuItem('Chat privat', ()=>{ if(data.username) openPrivateChatWith(data.username); menu.remove(); }));
+    // determine owner or admin
+    const isOwner = (data.authorUid && currentUser && data.authorUid === currentUser.uid) || (!data.authorUid && data.username === username);
+    const isAdmin = currentUser && (ALLOWED_ADMIN_EMAILS.includes(currentUser.email) || ALLOWED_ADMIN_UIDS.includes(currentUser.uid));
+    if(isOwner || isAdmin){
+      menu.appendChild(menuItem('Edit pesan', async ()=>{ menu.remove(); const newText = prompt('Edit pesan:', data.text||''); if(newText===null) return; await update(ref(db, `chats/${chatId}/messages/${id}`), { text: newText, edited:true }).catch(()=>alert('Gagal edit')); }));
+      menu.appendChild(menuItem('Hapus pesan', async ()=>{ menu.remove(); if(!confirm('Hapus pesan ini?')) return; await update(ref(db, `chats/${chatId}/messages/${id}`), { deleted:true, text:'' }).catch(()=>alert('Gagal hapus')); }));
     }
-    function refreshOpenState(){
-      const open = isWithinOpenHours() && !roomClosed;
-      sendBtn.disabled = !open;
-      textInput.disabled = !open;
-      if(!open){
-        hintEl.textContent = 'Ruang TUTUP (06:00 — 01:00) atau ditutup admin.';
-        hintEl.style.color = '#c0392b';
-      } else {
-        hintEl.textContent = 'Tekan Enter atau klik kirim. Klik pesan untuk membalas.';
-        hintEl.style.color = '';
-      }
-    }
-    setInterval(refreshOpenState, 30_000);
-    refreshOpenState();
+    document.body.appendChild(menu);
+    const rect = dotsBtn.getBoundingClientRect();
+    menu.style.top = (rect.top + window.scrollY + 28) + 'px';
+    menu.style.left = (rect.left + window.scrollX - menu.offsetWidth + 40) + 'px';
+    setTimeout(()=> {
+      const closeFn = (e)=>{ if(!menu.contains(e.target)) menu.remove(), document.removeEventListener('click', closeFn); };
+      document.addEventListener('click', closeFn);
+    }, 50);
+  });
 
-    // ---------- SUBSCRIBE / RENDER ----------
-    function subscribeToChat(chatId){
-      // reset UI state
-      currentChatId = chatId;
-      rendered = new Set();
-      chatArea.innerHTML = '';
-      roomTitle.textContent = (chatId === 'public') ? 'Chat Room' : `Chat privat — ${chatId.replace('private_','')}`;
-      // listen child_added
-      const messagesRef = ref(db, `chats/${chatId}/messages`);
-      onChildAdded(messagesRef, snap => {
-        const id = snap.key;
-        const data = snap.val();
-        if(rendered.has(id)) return;
-        rendered.add(id);
-        renderMessageNode(chatId, id, data);
-        // mark delivered for this user (simple)
-        update(ref(db, `chats/${chatId}/messages/${id}/delivered/${username}`), true).catch(()=>{});
-        // mark seen quickly if not mine
-        if(data.username !== username){
-          update(ref(db, `chats/${chatId}/messages/${id}/seen/${username}`), true).catch(()=>{});
-        }
-      });
-    }
+  bubble.addEventListener('click', ()=> { if(data.deleted) return; setReply({ id, username: data.username, text: data.text }); });
 
-    subscribeToChat('public');
+  // append
+  row.appendChild(bubble);
+  row.appendChild(dotsWrap);
+  chatEl.appendChild(row);
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
 
-    function renderMessageNode(chatId, id, data){
-      const wrapper = document.createElement('div');
-      wrapper.className = 'msg ' + (data.username === username ? 'me' : 'other');
-      wrapper.dataset.id = `${chatId}__${id}`;
+/* helper for menu items */
+function menuItem(text, onClick){ const el = document.createElement('div'); el.className='item'; el.textContent=text; el.addEventListener('click', onClick); return el; }
 
-      // admin controls appear if current user is admin
-      if(isAdmin){
-        const controls = document.createElement('div'); controls.className='controls';
-        const del = document.createElement('button'); del.className='icon-btn'; del.textContent='Hapus';
-        del.addEventListener('click', e => { e.stopPropagation(); adminDeleteMessage(chatId,id); });
-        const edit = document.createElement('button'); edit.className='icon-btn'; edit.textContent='Edit';
-        edit.addEventListener('click', e => { e.stopPropagation(); adminEditMessage(chatId,id,data); });
-        controls.appendChild(del); controls.appendChild(edit);
-        wrapper.appendChild(controls);
-      }
+/* =========================
+   SENDING MESSAGES (with authorUid when logged in)
+   ========================= */
+async function sendMessage(){
+  const txt = textInput.value.trim(); if(!txt) return;
+  // check open hours & room state
+  const snap = await get(ref(db, 'room/state')); const v = snap.exists()?snap.val():{}; const closed = !!v.closed;
+  if(!isWithinOpenHours() || closed){ alert('Ruang TUTUP (06:00—01:00) atau ditutup admin'); return; }
+  const messagesPath = `chats/${currentChatId}/messages`;
+  const payload = {
+    username,
+    text: txt,
+    createdAt: Date.now(),
+    time: new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}),
+    edited: false
+  };
+  if(currentUser) payload.authorUid = currentUser.uid;
+  if(replyingTo) payload.reply = { id: replyingTo.id, username: replyingTo.username, text: replyingTo.text };
+  try {
+    await push(ref(db, messagesPath), payload);
+    textInput.value = '';
+    setReply(null);
+  } catch(err){
+    console.error('push failed', err);
+    alert('Gagal mengirim — cek koneksi / rules Firebase');
+  }
+}
+sendBtn.addEventListener('click', sendMessage);
+textInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); } });
 
-      if(data.reply && data.reply.username){
-        const r = document.createElement('div'); r.className='reply-box';
-        r.textContent = `${data.reply.username}: ${data.reply.text}`;
-        wrapper.appendChild(r);
-      }
+/* =========================
+   Reply preview
+   ========================= */
+function setReply(obj){
+  replyingTo = obj;
+  if(obj) showFloatingReply(obj.username, obj.text);
+  else hideFloatingReply();
+  textInput.focus();
+}
+function showFloatingReply(user,text){
+  let preview = document.getElementById('replyPreviewInline');
+  if(!preview){ preview = document.createElement('div'); preview.id='replyPreviewInline'; preview.className='reply-box'; preview.style.position='fixed'; preview.style.left='8px'; preview.style.right='8px'; preview.style.bottom='74px'; preview.style.zIndex='999'; document.body.appendChild(preview); }
+  preview.textContent = `${user}: ${text.length>120?text.slice(0,120)+'…':text}`;
+}
+function hideFloatingReply(){ const p=document.getElementById('replyPreviewInline'); if(p) p.remove(); }
 
-      const body = document.createElement('div'); body.textContent = data.deleted ? 'Pesan dihapus' : (data.text || '');
-      wrapper.appendChild(body);
+/* =========================
+   Private chat & public switching
+   ========================= */
+function openPrivateChatWith(other){
+  if(!other){ alert('User tidak tersedia'); return; }
+  if(other === username){ alert('Itu Anda sendiri'); return; }
+  const chatId = privateChatId(username, other);
+  currentChatId = chatId; chatEl.innerHTML=''; subscribeToChat(chatId);
+  roomTitle.textContent = `Privat • ${other}`; backBtn.classList.remove('hidden'); statusLine.textContent = `Private dengan ${other}`;
+  hideFloatingReply();
+}
+function openPublicRoom(){ currentChatId = 'public'; chatEl.innerHTML=''; subscribeToChat('public'); roomTitle.textContent='Chat Room'; backBtn.classList.add('hidden'); statusLine.textContent = `Online — publik`; hideFloatingReply(); }
 
-      const meta = document.createElement('div'); meta.className='meta';
-      const timeSpan = document.createElement('span'); timeSpan.textContent = data.time || new Date(data.createdAt || Date.now()).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-      meta.appendChild(timeSpan);
-      if(data.username === username){
-        const tick = document.createElement('span'); tick.style.marginLeft='8px';
-        const delivered = data.delivered ? Object.keys(data.delivered).length > 0 : false;
-        const seen = data.seen ? Object.keys(data.seen).length > 0 : false;
-        if(!delivered) tick.textContent = '✓';
-        else if(delivered && !seen) tick.textContent = '✓✓';
-        else { tick.textContent = '✓✓'; tick.style.color = '#34b7f1'; }
-        meta.appendChild(tick);
-      }
-      wrapper.appendChild(meta);
+/* subscribe helper (re-usable) */
+function subscribeToChat(chatId){
+  currentChatId = chatId;
+  rendered = new Set();
+  chatEl.innerHTML = '';
+  const messagesRef = ref(db, `chats/${chatId}/messages`);
+  onChildAdded(messagesRef, (snap) => {
+    const id = snap.key; const data = snap.val();
+    if(document.querySelector(`[data-msgid="${chatId}__${id}"]`)) return;
+    renderMessage(chatId, id, data);
+    update(ref(db, `chats/${chatId}/messages/${id}/delivered/${whoKey()}`), true).catch(()=>{});
+    if(data.username !== whoKey()) update(ref(db, `chats/${chatId}/messages/${id}/seen/${whoKey()}`), true).catch(()=>{});
+  });
+  refreshOpenState();
+}
+subscribeToChat('public');
 
-      wrapper.addEventListener('click', () => {
-        if(data.deleted) return;
-        // set reply
-        setReply({ id, username: data.username, text: data.text });
-      });
+/* who key for presence/deliver/seen */
+function whoKey(){ return currentUser ? currentUser.uid : username; }
 
-      chatArea.appendChild(wrapper);
-      chatArea.scrollTop = chatArea.scrollHeight;
-    }
+/* show admin modal info */
+document.getElementById('menu_login_google').addEventListener('click', ()=>{}); // already hooked
+document.getElementById('closeAdminInfo').addEventListener('click', ()=> modalAdminInfo.classList.add('hidden'));
 
-    // ---------- user list ----------
-    onValue(ref(db, 'presence'), snap => {
-      const val = snap.val() || {};
-      userListEl.innerHTML = '';
-      Object.keys(val).sort().forEach(u => {
-        const card = document.createElement('div'); card.className='user-card';
-        const av = document.createElement('div'); av.className='avatar'; av.textContent = u.slice(0,2).toUpperCase();
-        av.addEventListener('click', e => { e.stopPropagation(); openPrivateChatWith(u); });
-        const meta = document.createElement('div'); meta.innerHTML = `<div style="font-weight:700">${u}${u.toLowerCase()==='admin' ? ' <span style="color:#b9770e">(admin)</span>' : ''}</div><div class="small">last: ${timeFromTs(val[u]?.lastActive)}</div>`;
-        card.appendChild(av); card.appendChild(meta);
-        userListEl.appendChild(card);
-      });
-    });
+/* click header menu toggle */
+headerMenuBtn.addEventListener('click', ()=> headerMenu.classList.toggle('hidden'));
 
-    // ---------- reply UI ----------
-    let replyingTo = null;
-    function setReply(obj){
-      replyingTo = obj;
-      if(obj){
-        rpUser.textContent = obj.username;
-        rpText.textContent = obj.text.length > 160 ? obj.text.slice(0,160)+'…' : obj.text;
-        replyPreview.style.display = 'flex';
-      } else {
-        replyPreview.style.display = 'none';
-        rpUser.textContent = ''; rpText.textContent = '';
-      }
-      textInput.focus();
-    }
-    rpCancel.addEventListener('click', ()=> setReply(null));
+/* header avatar click -> open private with admin */
+headerAvatar.addEventListener('click', ()=> {
+  if(!currentUser) { alert('Silakan login Google untuk chat privat dengan admin.'); return; }
+  openPrivateChatWith('admin');
+});
 
-    // ---------- send ----------
-    async function sendMessage(){
-      const text = textInput.value.trim();
-      if(!text) return;
-      if(!isWithinOpenHours() || roomClosed){
-        alert('Ruang TUTUP (06:00—01:00) atau ditutup admin');
-        return;
-      }
-      const chatId = currentChatId;
-      const messagesPath = `chats/${chatId}/messages`;
-      const payload = {
-        username,
-        text,
-        createdAt: Date.now(),
-        time: new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}),
-        edited: false
-      };
-      if(replyingTo) payload.reply = { id: replyingTo.id, username: replyingTo.username, text: replyingTo.text };
-      try {
-        await push(ref(db, messagesPath), payload);
-        textInput.value = '';
-        setReply(null);
-      } catch(err) {
-        console.error('push error', err);
-        alert('Gagal mengirim — cek koneksi / rules Firebase');
-      }
-    }
-    sendBtn.addEventListener('click', sendMessage);
-    textInput.addEventListener('keydown', e => { if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); } });
+/* back to public */
+backBtn.addEventListener('click', ()=> openPublicRoom());
 
-    // ---------- admin actions ----------
-    async function adminDeleteMessage(chatId, msgId){
-      if(!confirm('Hapus pesan ini?')) return;
-      const path = `chats/${chatId}/messages/${msgId}`;
-      update(ref(db, path), { deleted: true, text: '' }).catch(()=>{});
-    }
-    async function adminEditMessage(chatId, msgId, data){
-      const newText = prompt('Edit pesan:', data.text || '');
-      if(newText === null) return;
-      const path = `chats/${chatId}/messages/${msgId}`;
-      update(ref(db, path), { text: newText, edited: true }).catch(()=>{});
-    }
+/* small presence & admin indicator: after auth, check if user is admin */
+onAuthStateChanged(auth, (user)=> {
+  if(user){
+    // check admin lists
+    const isAdmin = ALLOWED_ADMIN_EMAILS.includes(user.email) || ALLOWED_ADMIN_UIDS.includes(user.uid);
+    updateUIAuthState(isAdmin);
+  } else updateUIAuthState(false);
+});
 
-    // ---------- private chat ----------
-    headerAvatar.addEventListener('click', ()=> openPrivateChatWith('admin'));
-    function openPrivateChatWith(other){
-      if(other === username){ alert('Itu Anda sendiri.'); return; }
-      const chatId = privateChatId(username, other);
-      currentChatId = chatId;
-      chatArea.innerHTML = '';
-      rendered = new Set();
-      subscribeToChat(chatId);
-      statusLine.textContent = `Chat privat — ${other}`;
-    }
+/* update UI for auth/admin quickly */
+function updateUIAuthState(isAdmin=false){
+  if(currentUser){
+    statusLine.textContent = `${username} — ${currentUser.email} ${isAdmin? '(admin)':''}`;
+    headerAvatar.textContent = (currentUser.displayName || username).slice(0,2).toUpperCase();
+    if(isAdmin) menu_toggle_room.style.display = 'block'; else menu_toggle_room.style.display = 'none';
+  } else {
+    statusLine.textContent = `${username} — belum login`;
+    menu_toggle_room.style.display = 'none';
+  }
+}
 
-    // clicking room title goes back to public
-    document.getElementById('roomTitle').addEventListener('click', ()=>{
-      currentChatId = 'public';
-      chatArea.innerHTML = '';
-      rendered = new Set();
-      subscribeToChat('public');
-      statusLine.textContent = 'Online — ruang publik';
-    });
+/* utility: check open hours */
+function isWithinOpenHours(d=new Date()){ const h=d.getHours(); return (h>=ROOM_OPEN) || (h<ROOM_CLOSE); }
+const ROOM_OPEN = 6, ROOM_CLOSE = 1;
 
-    // ---------- mark presence end ----------
-    window.addEventListener('beforeunload', ()=> {
-      update(ref(db, PRESENCE_PATH), { lastActive: Date.now(), online: false }).catch(()=>{});
-    });
+/* on unload: set presence offline */
+window.addEventListener('beforeunload', ()=> update(ref(db, `presence/${whoKey()}`), { lastActive: Date.now(), online:false }).catch(()=>{}));
+update(ref(db, `presence/${whoKey()}`), { lastActive: Date.now(), online:true }).catch(()=>{});
 
-    // bootstrap presence path set
-    update(ref(db, PRESENCE_PATH), { lastActive: Date.now(), online: true }).catch(()=>{});
-
-    // ensure initial public subscribe (already called earlier, but safe)
-    // subscribeToChat('public'); // already called before
-
-    // helper
-    function timeFromTs(ts){
-      if(!ts) return '--:--';
-      return new Date(ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-    }
-
-    // ---------- initial user list + presence ensure ---------- 
-    // ensure presence object for this user
-    update(ref(db, `presence/${username}`), { lastActive: Date.now(), online: true }).catch(()=>{});
-  </script>
+/* Done */
+console.log('Chat app loaded. After Google login, check console for user.uid and user.email to add to ALLOWED_ADMIN_UIDS / ALLOWED_ADMIN_EMAILS if needed.');
+</script>
 </body>
 </html>
