@@ -1,264 +1,471 @@
 <!doctype html>
 <html lang="id">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Chat Room Realtime — Stable</title>
-  <style>
-    :root{
-      --bg1:#0f1724; --bg2:#071028;
-      --muted:rgba(255,255,255,0.6);
-      --accent-start:#06b6d4; --accent-end:#7c3aed;
-      --me-bg: linear-gradient(90deg,var(--accent-start),var(--accent-end));
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg1),var(--bg2));color:#e6eef8}
-    .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:28px}
-    .app{width:100%;max-width:1000px;height:80vh;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:14px;padding:14px;display:grid;grid-template-rows:auto 1fr auto;gap:12px;box-shadow:0 10px 30px rgba(2,6,23,0.6)}
-    header{display:flex;justify-content:space-between;align-items:center;padding:8px 12px}
-    header h1{margin:0;font-size:18px}
-    header .sub{font-size:13px;color:var(--muted)}
-    .messages{overflow:auto;padding:12px 16px;display:flex;flex-direction:column;gap:10px}
-    .msg{
-      max-width:78%;padding:10px;border-radius:12px;background:rgba(255,255,255,0.03);box-shadow:0 6px 18px rgba(0,0,0,0.4);
-      position:relative;animation:pop .16s ease;
-    }
-    .msg.me{margin-left:auto;background:var(--me-bg);color:#021124}
-    .meta{font-size:12px;color:var(--muted);display:flex;gap:8px;align-items:center;margin-bottom:6px}
-    .meta .name{font-weight:700}
-    .meta .time{font-size:11px;color:rgba(255,255,255,0.6)}
-    @keyframes pop{from{transform:translateY(6px);opacity:0}to{transform:none;opacity:1}}
-    .reply-box{
-      background:rgba(255,255,255,0.04);border-left:4px solid rgba(0,0,0,0.1);padding:8px;border-radius:8px;margin-bottom:8px;font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-    }
-    .compose{display:flex;flex-direction:column;padding:10px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));}
-    .reply-preview{
-      display:flex;align-items:center;gap:8px;padding:8px;border-radius:10px;background:rgba(0,0,0,0.25);margin-bottom:8px;
-    }
-    .reply-preview .meta{margin:0;color:#9bd7ff}
-    .reply-preview .text{flex:1;color:var(--muted);font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .btn-cancel{background:transparent;border:0;color:var(--muted);cursor:pointer;font-weight:700}
-    .input-row{display:flex;gap:8px}
-    .input{
-      flex:1;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);outline:none;background:transparent;color:inherit;font-size:15px
-    }
-    .send{padding:10px 14px;border-radius:10px;border:0;background:linear-gradient(90deg,var(--accent-end),var(--accent-start));font-weight:700;cursor:pointer}
-    .hint{font-size:13px;color:var(--muted);text-align:center;padding:6px}
-    .closed{display:none;text-align:center;padding:18px;color:#ffd6d6}
-    @media (max-width:720px){ .app{height:92vh;padding:8px} .messages{padding:8px} .msg{max-width:92%}}
-    .msg.clickable{cursor:pointer}
-    .msg.clickable:hover{filter:brightness(1.03)}
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>WhatsApp Style — Realtime Chat (Firebase)</title>
+<style>
+  /* WhatsApp-like style (simplified) */
+  :root{
+    --wa-green:#075e54; --bg:#e5ddd5; --bubble-me:#dcf8c6; --bubble-other:#fff;
+    --muted: #7b7b7b; --accent:#34b7f1;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+  }
+  html,body{height:100%;margin:0;background:var(--bg);-webkit-font-smoothing:antialiased}
+  .app{height:100vh;display:flex;flex-direction:column;max-width:980px;margin:0 auto;border-left:1px solid rgba(0,0,0,0.06);border-right:1px solid rgba(0,0,0,0.06);background:var(--bg)}
+  header{height:64px;background:var(--wa-green);color:#fff;display:flex;align-items:center;padding:8px 12px;gap:12px}
+  .avatar{width:44px;height:44px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;color:var(--wa-green);font-weight:700;cursor:pointer}
+  .title{font-size:16px;font-weight:700}
+  .subtitle{font-size:12px;color:rgba(255,255,255,0.9)}
+  .main{flex:1;display:flex;flex-direction:row;overflow:hidden}
+  .left{width:320px;border-right:1px solid rgba(0,0,0,0.05);background:#f8f9f9;padding:12px}
+  .right{flex:1;display:flex;flex-direction:column;align-items:stretch}
+  /* chat area */
+  .chat{flex:1;padding:18px;overflow:auto;background-image: url('https://i.ibb.co/D8g2Snp/whatsapp-bg.png'); background-size:cover}
+  .msg{max-width:74%;padding:10px 12px;margin:8px 0;border-radius:8px;position:relative;word-wrap:break-word;white-space:pre-wrap}
+  .msg.me{margin-left:auto;background:var(--bubble-me);border-bottom-right-radius:2px}
+  .msg.other{margin-right:auto;background:var(--bubble-other);border-bottom-left-radius:2px}
+  .msg .meta{font-size:11px;color:var(--muted);margin-top:6px;display:flex;gap:8px;align-items:center;justify-content:flex-end}
+  .reply-box{background:rgba(0,0,0,0.05);padding:6px 8px;border-left:3px solid var(--accent);margin-bottom:6px;border-radius:6px;font-size:13px;color:#333;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* small controls floating on message (for admin) */
+  .controls{position:absolute;left:8px;top:6px;display:flex;gap:6px;opacity:0;transition:opacity .15s}
+  .msg:hover .controls{opacity:1}
+  .icon-btn{background:rgba(0,0,0,0.06);border:none;padding:4px 6px;border-radius:6px;cursor:pointer;font-size:12px}
+  /* composer */
+  .composer{padding:12px;background:#f0f0f0;border-top:1px solid rgba(0,0,0,0.06);display:flex;flex-direction:column;gap:8px}
+  .reply-preview{display:flex;align-items:center;gap:8px;padding:8px;background:#fafafa;border-left:3px solid var(--accent);border-radius:6px}
+  .input-row{display:flex;gap:8px}
+  .input{flex:1;padding:12px;border-radius:20px;border:1px solid rgba(0,0,0,0.08);outline:none}
+  .btn{background:var(--wa-green);color:white;border:none;padding:10px 14px;border-radius:50%;cursor:pointer}
+  .btn:disabled{background:gray;cursor:not-allowed}
+  /* left list */
+  .user-list{display:flex;flex-direction:column;gap:8px}
+  .user-card{display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;background:#fff;cursor:pointer}
+  .user-card .meta{font-size:13px;color:#333}
+  /* misc */
+  .small{font-size:12px;color:var(--muted)}
+  .status-dot{width:8px;height:8px;border-radius:50%;background:#4caf50;margin-left:6px}
+  .private-badge{font-size:11px;background:#ffe6b3;padding:2px 6px;border-radius:6px;color:#5a3a00}
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="app" role="application" aria-label="Chat Room">
-      <header>
-        <div>
-          <h1>Chat Room</h1>
-          <div class="sub">Realtime lewat Firebase — klik pesan untuk membalas</div>
-        </div>
-        <div class="sub">Jam buka: <strong>06:00 — 01:00</strong></div>
-      </header>
+  <div class="app" role="application">
+    <header>
+      <div id="headerAvatar" class="avatar" title="Klik untuk chat pribadi admin">AD</div>
+      <div style="flex:1">
+        <div class="title">Chat Room</div>
+        <div class="subtitle" id="statusLine">Online — ruang publik</div>
+      </div>
+      <div class="small" id="openHours">06:00 — 01:00</div>
+    </header>
 
-      <div id="messages" class="messages" aria-live="polite"></div>
+    <div class="main">
+      <div class="left">
+        <div style="margin-bottom:8px;font-weight:700">Peserta</div>
+        <div class="user-list" id="userList"></div>
+        <div style="margin-top:12px" class="small">Klik avatar "AD" untuk chat privat ke admin.</div>
+      </div>
 
-      <div class="compose" id="composer">
-        <div id="closed" class="closed">⏳ Ruang TUTUP. Buka pukul 06:00 — 01:00</div>
+      <div class="right">
+        <div class="chat" id="chatArea" aria-live="polite"></div>
 
-        <div id="replyPreview" class="reply-preview" style="display:none;">
-          <div style="min-width:8px;border-left:4px solid rgba(255,255,255,0.6);height:36px;"></div>
-          <div style="flex:1">
-            <div class="meta tiny" id="rpUser"></div>
-            <div class="text" id="rpText"></div>
+        <div class="composer">
+          <div id="replyPreview" class="reply-preview" style="display:none">
+            <div style="font-weight:700" id="rpUser"></div>
+            <div style="flex:1;color:#333" id="rpText"></div>
+            <button id="rpCancel" class="icon-btn">×</button>
           </div>
-          <button class="btn-cancel" id="cancelReply" title="Batal balas">×</button>
-        </div>
 
-        <div class="input-row">
-          <input id="textInput" class="input" placeholder="Tulis pesan..." aria-label="Tulis pesan" />
-          <button id="sendBtn" class="send">Kirim</button>
+          <div class="input-row">
+            <input id="textInput" class="input" placeholder="Tulis pesan..." />
+            <button id="sendBtn" class="btn" title="Kirim">▶</button>
+          </div>
+          <div class="small" id="hint">Tekan Enter atau klik kirim. Klik pesan untuk membalas.</div>
         </div>
-        <div id="hint" class="hint">Tekan Enter atau klik Kirim. Klik pesan untuk membalas.</div>
       </div>
     </div>
   </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-    import {
-      getDatabase,
-      ref,
-      push,
-      onChildAdded
-    } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
+<script type="module">
+  /* ========== FIREBASE SDK ========== */
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+  import {
+    getDatabase, ref, push, onChildAdded, update, onValue, serverTimestamp, child, get
+  } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
 
-    // -- Masukkan config kamu di sini --
-    const firebaseConfig = {
-      apiKey: "AIzaSyB_1FfccKqXdet00LJyYLY7K4FenvgerhU",
-      authDomain: "webku-bf4dd.firebaseapp.com",
-      databaseURL: "https://webku-bf4dd-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "webku-bf4dd",
-      storageBucket: "webku-bf4dd.appspot.com", // bentuk umum storageBucket
-      messagingSenderId: "873622953345",
-      appId: "1:873622953345:web:50b0dcfc58b27b9b1c5c80",
-      measurementId: "G-30ZPKLVZYE"
-    };
+  /* ========== CONFIG (pakai milikmu) ========== */
+  const firebaseConfig = {
+    apiKey: "AIzaSyB_1FfccKqXdet00LJyYLY7K4FenvgerhU",
+    authDomain: "webku-bf4dd.firebaseapp.com",
+    databaseURL: "https://webku-bf4dd-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "webku-bf4dd",
+    storageBucket: "webku-bf4dd.appspot.com",
+    messagingSenderId: "873622953345",
+    appId: "1:873622953345:web:50b0dcfc58b27b9b1c5c80",
+    measurementId: "G-30ZPKLVZYE"
+  };
 
-    // Init Firebase
-    const app = initializeApp(firebaseConfig);
-    // Pastikan kita pakai databaseURL region yang benar
-    const db = getDatabase(app, firebaseConfig.databaseURL);
-    const messagesRef = ref(db, 'messages');
+  /* ========== INIT ========== */
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app, firebaseConfig.databaseURL);
 
-    // DOM
-    const messagesEl = document.getElementById('messages');
-    const inputEl = document.getElementById('textInput');
-    const sendBtn = document.getElementById('sendBtn');
-    const hintEl = document.getElementById('hint');
-    const closedEl = document.getElementById('closed');
-    const replyPreview = document.getElementById('replyPreview');
-    const rpUser = document.getElementById('rpUser');
-    const rpText = document.getElementById('rpText');
-    const cancelReplyBtn = document.getElementById('cancelReply');
+  /* chat architecture:
+     - chats/<chatId>/messages/<msgId> : { username, text, time, reply:{id,username,text}, deleted?, edited?, delivered:{user:true}, seen:{user:true} }
+     - presence/<username> : { lastActive: timestamp, online: true/false }
+     - room/state : { closed: true/false }
+  */
 
-    // User
-    let username = localStorage.getItem('username_v1');
-    if(!username){
-      username = prompt('Masukkan nama Anda:') || ('User'+Math.floor(Math.random()*900+100));
-      localStorage.setItem('username_v1', username);
-    }
+  /* ========== DOM ========== */
+  const chatArea = document.getElementById('chatArea');
+  const textInput = document.getElementById('textInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const replyPreview = document.getElementById('replyPreview');
+  const rpUser = document.getElementById('rpUser');
+  const rpText = document.getElementById('rpText');
+  const rpCancel = document.getElementById('rpCancel');
+  const statusLine = document.getElementById('statusLine');
+  const headerAvatar = document.getElementById('headerAvatar');
+  const userListEl = document.getElementById('userList');
+  const hintEl = document.getElementById('hint');
 
-    // Open hours
-    const ROOM_OPEN = 6, ROOM_CLOSE = 1;
-    function isRoomOpen(date = new Date()){
-      const h = date.getHours();
-      return (h >= ROOM_OPEN) || (h < ROOM_CLOSE);
-    }
-    function refreshOpenState(){
-      const open = isRoomOpen();
-      if(!open){
-        closedEl.style.display = 'block';
-        inputEl.disabled = true;
-        sendBtn.disabled = true;
-      } else {
-        closedEl.style.display = 'none';
-        inputEl.disabled = false;
-        sendBtn.disabled = false;
-      }
-    }
+  /* ========== USER & STATE ========== */
+  let username = localStorage.getItem('username_v1');
+  if(!username){
+    username = prompt('Masukkan nama Anda:') || ('User'+Math.floor(Math.random()*900+100));
+    localStorage.setItem('username_v1', username);
+  }
+  // Show initials in avatar
+  headerAvatar.textContent = username.slice(0,2).toUpperCase();
+
+  // admin username is literally "admin" (case-insensitive)
+  const isAdmin = (username.toLowerCase() === 'admin');
+
+  // chatId management: 'public' or private chat with admin: 'private_<a>_<b>' sorted
+  function privateChatId(a, b){ const arr=[a,b].sort(); return `private_${arr[0]}_${arr[1]}`; }
+  let currentChatId = 'public';
+
+  // reply state
+  let replyingTo = null;
+
+  // presence update (simple)
+  const PRESENCE_PATH = `presence/${username}`;
+  function announcePresence(){
+    const pRef = ref(db, PRESENCE_PATH);
+    update(ref(db, `presence/${username}`), { lastActive: Date.now(), online: true }).catch(()=>{});
+  }
+  announcePresence();
+  setInterval(announcePresence, 20_000);
+
+  // room state
+  const ROOM_STATE_REF = ref(db, 'room/state');
+  let roomClosed = false;
+  onValue(ROOM_STATE_REF, (snap) => {
+    const v = snap.val();
+    roomClosed = v && v.closed;
     refreshOpenState();
-    setInterval(refreshOpenState, 30_000);
+  }, { onlyOnce:false });
 
-    // Reply state
-    let replyingTo = null;
-    function setReply(to){
-      replyingTo = to;
-      if(to){
-        rpUser.textContent = to.username;
-        rpText.textContent = to.text.length > 120 ? to.text.slice(0,120) + '…' : to.text;
-        replyPreview.style.display = 'flex';
-        inputEl.focus();
-      }else{
-        replyPreview.style.display = 'none';
-        rpUser.textContent = '';
-        rpText.textContent = '';
-      }
+  /* open hours logic */
+  const ROOM_OPEN = 6, ROOM_CLOSE = 1; // 06:00 - 01:00
+  function isWithinOpenHours(d = new Date()){
+    const h = d.getHours();
+    return (h >= ROOM_OPEN) || (h < ROOM_CLOSE);
+  }
+  function refreshOpenState(){
+    const open = isWithinOpenHours() && !roomClosed;
+    sendBtn.disabled = !open;
+    textInput.disabled = !open;
+    if(!open){
+      hintEl.textContent = 'Ruang TUTUP (06:00 — 01:00) atau ditutup admin.';
+      hintEl.style.color = '#c0392b';
+    } else {
+      hintEl.textContent = 'Tekan Enter atau klik kirim. Klik pesan untuk membalas.';
+      hintEl.style.color = '';
     }
-    cancelReplyBtn.addEventListener('click', ()=> setReply(null));
+  }
+  setInterval(refreshOpenState, 30_000);
+  refreshOpenState();
 
-    // Sending message (async + try/catch)
-    async function sendMessage(){
-      const text = inputEl.value.trim();
-      if(!text) return;
-      if(!isRoomOpen()){
-        hintEl.textContent = 'Ruang saat ini TERTUTUP. Buka pukul 06:00 — 01:00';
-        hintEl.style.color = '#ffb4b4';
-        return;
-      }
-
-      const now = new Date();
-      const timeStr = now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
-      const payload = {
-        username,
-        text,
-        time: timeStr,
-        createdAt: Date.now()
-      };
-      if(replyingTo){
-        payload.reply = {
-          id: replyingTo.id,
-          username: replyingTo.username,
-          text: replyingTo.text
-        };
-      }
-
-      try {
-        await push(messagesRef, payload);
-        inputEl.value = '';
-        setReply(null);
-        hintEl.textContent = 'Terkirim ✓';
-        hintEl.style.color = '#9be6c3';
-        setTimeout(()=>{ hintEl.textContent = 'Tekan Enter atau klik Kirim. Klik pesan untuk membalas.'; hintEl.style.color=''; }, 1200);
-      } catch(err){
-        console.error('Push failed:', err);
-        // Tampilkan pesan error yang membantu
-        hintEl.textContent = 'Gagal mengirim — cek koneksi atau rules Firebase.';
-        hintEl.style.color = '#ffb4b4';
-      }
-    }
-
-    sendBtn.addEventListener('click', sendMessage);
-    inputEl.addEventListener('keydown', (e)=>{ if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); } });
-
-    // Render helpers
-    function escapeHtml(s){ return String(s || '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'); }
-
-    function createMessageNode(id, data){
-      const el = document.createElement('div');
-      el.className = 'msg clickable' + (data.username === username ? ' me' : '');
-      el.setAttribute('data-id', id);
-
-      if(data.reply && (data.reply.text || data.reply.username)){
-        const r = document.createElement('div');
-        r.className = 'reply-box';
-        r.innerHTML = `<strong style="display:inline-block;margin-right:6px;color:#a6e3ff">${escapeHtml(data.reply.username)}</strong><span style="opacity:0.85">${escapeHtml(data.reply.text)}</span>`;
-        el.appendChild(r);
-      }
-
-      const meta = document.createElement('div');
-      meta.className = 'meta';
-      const nameSpan = document.createElement('span'); nameSpan.className = 'name'; nameSpan.textContent = data.username;
-      const timeSpan = document.createElement('span'); timeSpan.className = 'time'; timeSpan.textContent = data.time || '';
-      meta.appendChild(nameSpan); meta.appendChild(timeSpan);
-      el.appendChild(meta);
-
-      const body = document.createElement('div'); body.className = 'body'; body.textContent = data.text;
-      el.appendChild(body);
-
-      el.addEventListener('click', ()=>{
-        setReply({ id, username: data.username, text: data.text });
-        inputEl.scrollIntoView({behavior:'smooth', block:'center'});
-      });
-
-      return el;
-    }
-
-    // Realtime listener
+  /* ========== CHAT subscription ========== */
+  let messagesRef = ref(db, `chats/${currentChatId}/messages`);
+  function subscribeToChat(chatId){
+    // clear UI
+    chatArea.innerHTML = '';
+    currentChatId = chatId;
+    messagesRef = ref(db, `chats/${chatId}/messages`);
+    // load existing & subscribe
     onChildAdded(messagesRef, (snap) => {
       const id = snap.key;
       const data = snap.val();
-      if(document.querySelector(`.msg[data-id="${id}"]`)) return;
-      const node = createMessageNode(id, data);
-      messagesEl.appendChild(node);
-      while(messagesEl.children.length > 700) messagesEl.removeChild(messagesEl.firstChild);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
+      renderMessageNode(chatId, id, data);
+      // mark delivered for this client
+      const deliveredPath = `chats/${chatId}/messages/${id}/delivered/${username}`;
+      update(ref(db, deliveredPath), true).catch(()=>{});
+      // if the message is not from me, mark as seen (simple: immediate)
+      if(data && data.username !== username){
+        const seenPath = `chats/${chatId}/messages/${id}/seen/${username}`;
+        update(ref(db, seenPath), true).catch(()=>{});
+      }
+    });
+  }
+
+  subscribeToChat('public');
+
+  /* ========== RENDER & HELPERS ========== */
+  function timeFromTs(ts){
+    if(!ts) return new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    const d = new Date(ts);
+    return d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  }
+
+  function escapeHtml(s){return String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');}
+
+  function renderMessageNode(chatId, id, data){
+    // avoid duplicate render
+    if(document.querySelector(`.msg[data-id="${chatId}__${id}"]`)) return;
+    const el = document.createElement('div');
+    el.className = 'msg ' + (data.username === username ? 'me' : 'other');
+    el.setAttribute('data-id', `${chatId}__${id}`);
+
+    // Admin avatar click: show admin private chat
+    // Top small controls for admin
+    const controls = document.createElement('div'); controls.className = 'controls';
+    if(isAdmin){
+      // delete
+      const delBtn = document.createElement('button'); delBtn.className='icon-btn'; delBtn.textContent='Hapus';
+      delBtn.title='Hapus pesan';
+      delBtn.addEventListener('click', (e)=>{ e.stopPropagation(); adminDeleteMessage(chatId, id); });
+      controls.appendChild(delBtn);
+      // edit
+      const editBtn = document.createElement('button'); editBtn.className='icon-btn'; editBtn.textContent='Edit';
+      editBtn.title='Edit pesan';
+      editBtn.addEventListener('click', (e)=>{ e.stopPropagation(); adminEditMessage(chatId, id, data);});
+      controls.appendChild(editBtn);
+      // close room toggle
+      const closeBtn = document.createElement('button'); closeBtn.className='icon-btn'; closeBtn.textContent='Tutup';
+      closeBtn.title='Tutup room (admin)';
+      closeBtn.addEventListener('click', (e)=>{ e.stopPropagation(); toggleRoomClosed(); });
+      controls.appendChild(closeBtn);
+    }
+    el.appendChild(controls);
+
+    // reply box if exists
+    if(data.reply && data.reply.username){
+      const r = document.createElement('div'); r.className='reply-box';
+      r.textContent = `${data.reply.username}: ${data.reply.text}`;
+      el.appendChild(r);
+    }
+
+    // message body
+    const body = document.createElement('div'); body.innerHTML = escapeHtml(data.text || (data.deleted ? 'Pesan dihapus' : '')); el.appendChild(body);
+
+    // meta (time + read receipts)
+    const meta = document.createElement('div'); meta.className='meta';
+    const timeSpan = document.createElement('span'); timeSpan.textContent = data.time || timeFromTs(data.createdAt || Date.now());
+    meta.appendChild(timeSpan);
+
+    // read receipts: only for my messages show ticks
+    if(data.username === username){
+      const tick = document.createElement('span'); tick.style.marginLeft='8px';
+      // determine delivered / seen
+      const delivered = data.delivered ? Object.keys(data.delivered).length > 0 : false;
+      const seen = data.seen ? Object.keys(data.seen).length > 0 : false;
+      if(!delivered) tick.textContent = '✓'; // single tick
+      else if(delivered && !seen) tick.textContent = '✓✓'; // double grey
+      else if(seen) { tick.textContent = '✓✓'; tick.style.color = '#34b7f1'; } // double blue
+      meta.appendChild(tick);
+    }
+
+    el.appendChild(meta);
+
+    // click to reply (not when clicking admin control)
+    el.addEventListener('click', ()=>{
+      if(data.deleted) return;
+      setReply({ id, username: data.username, text: data.text });
     });
 
-    // focus
-    inputEl.focus();
-    window.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') messagesEl.scrollTop = messagesEl.scrollHeight; });
-  </script>
+    // admin: click avatar opens private chat (handled outside)
+    chatArea.appendChild(el);
+    chatArea.scrollTop = chatArea.scrollHeight;
+  }
+
+  // update user list & presence
+  function refreshUserList(){
+    const pRef = ref(db, 'presence');
+    onValue(pRef, (snap)=>{
+      const v = snap.val() || {};
+      userListEl.innerHTML = '';
+      Object.keys(v).sort().forEach(u=>{
+        const card = document.createElement('div'); card.className='user-card';
+        const av = document.createElement('div'); av.className='avatar'; av.textContent = u.slice(0,2).toUpperCase();
+        // clicking admin avatar: open private chat
+        av.style.cursor = 'pointer';
+        av.addEventListener('click', (e)=>{
+          e.stopPropagation();
+          openPrivateChatWith(u);
+        });
+        const meta = document.createElement('div'); meta.innerHTML = `<div style="font-weight:700">${u}${u.toLowerCase()==='admin' ? ' <span style="color:#b9770e"> (admin)</span>' : ''}</div><div class="small">last: ${timeFromTs(v[u].lastActive)}</div>`;
+        card.appendChild(av); card.appendChild(meta);
+        userListEl.appendChild(card);
+      });
+    });
+  }
+  refreshUserList();
+
+  /* ========== REPLY UI ========== */
+  function setReply(to){
+    replyingTo = to;
+    if(to){
+      rpUser.textContent = to.username;
+      rpText.textContent = to.text.length > 160 ? to.text.slice(0,160) + '…' : to.text;
+      replyPreview.style.display = 'flex';
+    } else {
+      replyPreview.style.display = 'none';
+      rpUser.textContent = ''; rpText.textContent = '';
+    }
+  }
+  rpCancel.addEventListener('click', ()=> setReply(null));
+
+  /* ========== SENDING ========== */
+  async function sendMessage(){
+    const txt = textInput.value.trim();
+    if(!txt) return;
+    if(!isWithinOpenHours() || roomClosed){
+      alert('Ruang TUTUP (06:00—01:00) atau ditutup admin');
+      return;
+    }
+
+    // determine chatId to send to
+    const chatId = currentChatId;
+    const messagesPath = `chats/${chatId}/messages`;
+    const now = new Date();
+    const payload = {
+      username,
+      text: txt,
+      createdAt: Date.now(),
+      time: now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}),
+      edited: false
+    };
+    if(replyingTo) payload.reply = { id: replyingTo.id, username: replyingTo.username, text: replyingTo.text };
+
+    try {
+      await push(ref(db, messagesPath), payload);
+      textInput.value = '';
+      setReply(null);
+    } catch(err){
+      console.error('push failed', err);
+      alert('Gagal mengirim — cek koneksi atau rules Firebase.');
+    }
+  }
+
+  sendBtn.addEventListener('click', sendMessage);
+  textInput.addEventListener('keydown', (e)=> { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+
+  /* ========== ADMIN ACTIONS ========== */
+  async function adminDeleteMessage(chatId, msgId){
+    if(!confirm('Hapus pesan ini?')) return;
+    const path = `chats/${chatId}/messages/${msgId}`;
+    // mark deleted so we keep record
+    update(ref(db, path), { deleted: true, text: '' }).catch(()=>{});
+  }
+  async function adminEditMessage(chatId, msgId, data){
+    const newText = prompt('Edit pesan:', data.text || '');
+    if(newText === null) return;
+    const path = `chats/${chatId}/messages/${msgId}`;
+    update(ref(db, path), { text: newText, edited: true }).catch(()=>{});
+  }
+  async function toggleRoomClosed(){
+    // read current
+    const snap = await get(ref(db, 'room/state'));
+    const v = snap.exists() ? snap.val() : {};
+    const closed = !v.closed;
+    update(ref(db, 'room/state'), { closed }).catch(()=>{});
+    alert(closed ? 'Room ditutup' : 'Room dibuka');
+  }
+
+  /* ========== PRIVATE CHAT: clicking 'admin' avatar opens private chat between user & admin ========== */
+  headerAvatar.addEventListener('click', ()=>{
+    openPrivateChatWith('admin');
+  });
+
+  function openPrivateChatWith(otherUsername){
+    if(otherUsername === username){
+      alert('Itu Anda sendiri.');
+      return;
+    }
+    const chatId = privateChatId(username, otherUsername);
+    // update header & state
+    currentChatId = chatId;
+    statusLine.textContent = `Chat privat — dengan ${otherUsername}`;
+    // clear & subscribe
+    chatArea.innerHTML = '';
+    subscribeToChat(chatId);
+  }
+
+  /* go back to public chat by clicking title */
+  document.querySelector('.title').addEventListener('click', ()=>{
+    currentChatId = 'public';
+    statusLine.textContent = 'Online — ruang publik';
+    chatArea.innerHTML = '';
+    subscribeToChat('public');
+  });
+
+  /* ========== mark message seen/delivered: on load of message we set delivered for this user, and seen when in view (simplified immediate seen) ========== */
+  // subscribeToChat handles delivered/seen on onChildAdded
+
+  /* ========== helper: admin UI for toggling room open from left? add small button if user is admin ========== */
+  if(isAdmin){
+    const adminNote = document.createElement('div'); adminNote.style.marginTop='12px';
+    adminNote.innerHTML = `<div style="font-weight:700;color:#b9770e">Mode Admin</div><div class="small">Anda punya akses: edit/hapus/tutup room</div>`;
+    document.querySelector('.left').prepend(adminNote);
+  }
+
+  /* keep UI up to date with room state and presence */
+  onValue(ref(db, 'room/state'), (s)=> {
+    const v = s.val() || {};
+    roomClosed = !!v.closed;
+    refreshOpenState();
+  });
+
+  // initial scroll target and small UX
+  chatArea.addEventListener('click', ()=> textInput.focus());
+
+  // keep subscribed user presence updated on unload remove online => false
+  window.addEventListener('beforeunload', ()=> {
+    update(ref(db, PRESENCE_PATH), { lastActive: Date.now(), online: false }).catch(()=>{});
+  });
+
+  // ensure user list updated periodically
+  setInterval(announcePresence, 20_000);
+
+  // small bootstrap: ensure user presence created if not exists
+  update(ref(db, `presence/${username}`), { lastActive: Date.now(), online: true }).catch(()=>{});
+
+  // show initial subscribe
+  subscribeToChat('public');
+
+  // update user list live
+  onValue(ref(db, 'presence'), (snap)=> {
+    const v = snap.val() || {};
+    userListEl.innerHTML = '';
+    Object.keys(v).sort().forEach(u=>{
+      const card = document.createElement('div'); card.className='user-card';
+      const a = document.createElement('div'); a.className='avatar'; a.textContent = u.slice(0,2).toUpperCase();
+      a.addEventListener('click', ()=> openPrivateChatWith(u));
+      const meta = document.createElement('div'); meta.innerHTML = `<div style="font-weight:700">${u}${(u.toLowerCase()==='admin') ? ' <span style="color:#b9770e"> (admin)</span>' : ''}</div><div class="small">last: ${timeFromTs(v[u]?.lastActive)}</div>`;
+      card.appendChild(a); card.appendChild(meta);
+      userListEl.appendChild(card);
+    });
+  });
+
+  /* minimal helper time formatting */
+  function timeFromTs(ts){
+    if(!ts) return '--:--';
+    const d = new Date(ts);
+    return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  }
+
+  /* ========== END ========== */
+</script>
 </body>
 </html>
