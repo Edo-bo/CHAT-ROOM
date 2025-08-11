@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Chat Room Realtime — Reply (WhatsApp style)</title>
+  <title>Chat Room Realtime — Stable</title>
   <style>
     :root{
       --bg1:#0f1724; --bg2:#071028;
@@ -29,11 +29,9 @@
     .meta .name{font-weight:700}
     .meta .time{font-size:11px;color:rgba(255,255,255,0.6)}
     @keyframes pop{from{transform:translateY(6px);opacity:0}to{transform:none;opacity:1}}
-    /* reply preview inside message (WhatsApp-like small box) */
     .reply-box{
       background:rgba(255,255,255,0.04);border-left:4px solid rgba(0,0,0,0.1);padding:8px;border-radius:8px;margin-bottom:8px;font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
     }
-    /* input area */
     .compose{display:flex;flex-direction:column;padding:10px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));}
     .reply-preview{
       display:flex;align-items:center;gap:8px;padding:8px;border-radius:10px;background:rgba(0,0,0,0.25);margin-bottom:8px;
@@ -48,9 +46,7 @@
     .send{padding:10px 14px;border-radius:10px;border:0;background:linear-gradient(90deg,var(--accent-end),var(--accent-start));font-weight:700;cursor:pointer}
     .hint{font-size:13px;color:var(--muted);text-align:center;padding:6px}
     .closed{display:none;text-align:center;padding:18px;color:#ffd6d6}
-    /* small responsive */
     @media (max-width:720px){ .app{height:92vh;padding:8px} .messages{padding:8px} .msg{max-width:92%}}
-    /* cursor pointer for clickable message (to reply) */
     .msg.clickable{cursor:pointer}
     .msg.clickable:hover{filter:brightness(1.03)}
   </style>
@@ -91,47 +87,51 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-    import { getDatabase, ref, push, onChildAdded, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
+    import {
+      getDatabase,
+      ref,
+      push,
+      onChildAdded
+    } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
 
-    // --- Firebase config (dari kamu) ---
+    // -- Masukkan config kamu di sini --
     const firebaseConfig = {
       apiKey: "AIzaSyB_1FfccKqXdet00LJyYLY7K4FenvgerhU",
       authDomain: "webku-bf4dd.firebaseapp.com",
-      databaseURL: "https://webku-bf4dd-default-rtdb.asia-southeast1.firebasedatabase.app/",
+      databaseURL: "https://webku-bf4dd-default-rtdb.asia-southeast1.firebasedatabase.app",
       projectId: "webku-bf4dd",
-      storageBucket: "webku-bf4dd.firebasestorage.app",
+      storageBucket: "webku-bf4dd.appspot.com", // bentuk umum storageBucket
       messagingSenderId: "873622953345",
       appId: "1:873622953345:web:50b0dcfc58b27b9b1c5c80",
       measurementId: "G-30ZPKLVZYE"
     };
 
+    // Init Firebase
     const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+    // Pastikan kita pakai databaseURL region yang benar
+    const db = getDatabase(app, firebaseConfig.databaseURL);
     const messagesRef = ref(db, 'messages');
 
-    // --- DOM ---
+    // DOM
     const messagesEl = document.getElementById('messages');
     const inputEl = document.getElementById('textInput');
     const sendBtn = document.getElementById('sendBtn');
     const hintEl = document.getElementById('hint');
     const closedEl = document.getElementById('closed');
-    const composerEl = document.getElementById('composer');
-
     const replyPreview = document.getElementById('replyPreview');
     const rpUser = document.getElementById('rpUser');
     const rpText = document.getElementById('rpText');
     const cancelReplyBtn = document.getElementById('cancelReply');
 
-    // --- User ---
+    // User
     let username = localStorage.getItem('username_v1');
     if(!username){
       username = prompt('Masukkan nama Anda:') || ('User'+Math.floor(Math.random()*900+100));
       localStorage.setItem('username_v1', username);
     }
 
-    // --- Open hours ---
-    const ROOM_OPEN = 6; // 06:00
-    const ROOM_CLOSE = 1; // 01:00
+    // Open hours
+    const ROOM_OPEN = 6, ROOM_CLOSE = 1;
     function isRoomOpen(date = new Date()){
       const h = date.getHours();
       return (h >= ROOM_OPEN) || (h < ROOM_CLOSE);
@@ -151,9 +151,8 @@
     refreshOpenState();
     setInterval(refreshOpenState, 30_000);
 
-    // --- Reply state ---
-    let replyingTo = null; // {id, username, text}
-
+    // Reply state
+    let replyingTo = null;
     function setReply(to){
       replyingTo = to;
       if(to){
@@ -161,7 +160,7 @@
         rpText.textContent = to.text.length > 120 ? to.text.slice(0,120) + '…' : to.text;
         replyPreview.style.display = 'flex';
         inputEl.focus();
-      } else {
+      }else{
         replyPreview.style.display = 'none';
         rpUser.textContent = '';
         rpText.textContent = '';
@@ -169,8 +168,8 @@
     }
     cancelReplyBtn.addEventListener('click', ()=> setReply(null));
 
-    // --- Sending message ---
-    function sendMessage(){
+    // Sending message (async + try/catch)
+    async function sendMessage(){
       const text = inputEl.value.trim();
       if(!text) return;
       if(!isRoomOpen()){
@@ -178,6 +177,7 @@
         hintEl.style.color = '#ffb4b4';
         return;
       }
+
       const now = new Date();
       const timeStr = now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
       const payload = {
@@ -194,33 +194,32 @@
         };
       }
 
-      push(messagesRef, payload)
-        .then(()=> {
-          inputEl.value = '';
-          setReply(null);
-          hintEl.textContent = 'Terkirim ✓';
-          hintEl.style.color = '#9be6c3';
-          setTimeout(()=>{ hintEl.textContent = 'Tekan Enter atau klik Kirim. Klik pesan untuk membalas.'; hintEl.style.color=''; }, 1200);
-        })
-        .catch(err=>{
-          console.error(err);
-          hintEl.textContent = 'Gagal mengirim — cek koneksi.';
-          hintEl.style.color = '#ffb4b4';
-        });
+      try {
+        await push(messagesRef, payload);
+        inputEl.value = '';
+        setReply(null);
+        hintEl.textContent = 'Terkirim ✓';
+        hintEl.style.color = '#9be6c3';
+        setTimeout(()=>{ hintEl.textContent = 'Tekan Enter atau klik Kirim. Klik pesan untuk membalas.'; hintEl.style.color=''; }, 1200);
+      } catch(err){
+        console.error('Push failed:', err);
+        // Tampilkan pesan error yang membantu
+        hintEl.textContent = 'Gagal mengirim — cek koneksi atau rules Firebase.';
+        hintEl.style.color = '#ffb4b4';
+      }
     }
 
     sendBtn.addEventListener('click', sendMessage);
-    inputEl.addEventListener('keydown', (e)=>{
-      if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); }
-    });
+    inputEl.addEventListener('keydown', (e)=>{ if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); } });
 
-    // --- Render message helper ---
+    // Render helpers
+    function escapeHtml(s){ return String(s || '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'); }
+
     function createMessageNode(id, data){
       const el = document.createElement('div');
       el.className = 'msg clickable' + (data.username === username ? ' me' : '');
       el.setAttribute('data-id', id);
 
-      // If this message is a reply to another message, show small reply box
       if(data.reply && (data.reply.text || data.reply.username)){
         const r = document.createElement('div');
         r.className = 'reply-box';
@@ -228,60 +227,38 @@
         el.appendChild(r);
       }
 
-      // meta (name + time)
       const meta = document.createElement('div');
       meta.className = 'meta';
-      const nameSpan = document.createElement('span');
-      nameSpan.className = 'name';
-      nameSpan.textContent = data.username;
-      const timeSpan = document.createElement('span');
-      timeSpan.className = 'time';
-      timeSpan.textContent = data.time || '';
-      meta.appendChild(nameSpan);
-      meta.appendChild(timeSpan);
+      const nameSpan = document.createElement('span'); nameSpan.className = 'name'; nameSpan.textContent = data.username;
+      const timeSpan = document.createElement('span'); timeSpan.className = 'time'; timeSpan.textContent = data.time || '';
+      meta.appendChild(nameSpan); meta.appendChild(timeSpan);
       el.appendChild(meta);
 
-      // body
-      const body = document.createElement('div');
-      body.className = 'body';
-      body.textContent = data.text;
+      const body = document.createElement('div'); body.className = 'body'; body.textContent = data.text;
       el.appendChild(body);
 
-      // click to reply: when clicked, set replyingTo with this message
-      el.addEventListener('click', (ev)=>{
-        // avoid when clicking on input or send etc.
+      el.addEventListener('click', ()=>{
         setReply({ id, username: data.username, text: data.text });
-        // scroll input into view
         inputEl.scrollIntoView({behavior:'smooth', block:'center'});
       });
 
       return el;
     }
 
-    function escapeHtml(s){
-      if(!s) return '';
-      return s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
-    }
-
-    // --- Realtime listener ---
+    // Realtime listener
     onChildAdded(messagesRef, (snap) => {
       const id = snap.key;
       const data = snap.val();
-      // Prevent duplicate if already exists
       if(document.querySelector(`.msg[data-id="${id}"]`)) return;
       const node = createMessageNode(id, data);
       messagesEl.appendChild(node);
-      // keep last 500 messages to avoid huge DOM — optional purge
-      while(messagesEl.children.length > 700){ messagesEl.removeChild(messagesEl.firstChild); }
+      while(messagesEl.children.length > 700) messagesEl.removeChild(messagesEl.firstChild);
       messagesEl.scrollTop = messagesEl.scrollHeight;
     });
 
-    // Seed initial hint and focus
+    // focus
     inputEl.focus();
-
-    // show online indicator (simple)
     window.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') messagesEl.scrollTop = messagesEl.scrollHeight; });
-
   </script>
 </body>
 </html>
